@@ -29,8 +29,8 @@ getChain (TrainingText str) desiredLength
             actualLength = length chainWords
 
 
-addTrainingTextToChainSet :: ChainSet -> Int -> TrainingText -> ChainSet
-addTrainingTextToChainSet chainSet chainLength trainingText =
+addTrainingTextToChainSet :: Int -> ChainSet -> TrainingText -> ChainSet
+addTrainingTextToChainSet chainLength chainSet trainingText =
     foldl getNextChainSet chainSet (getSubTrainingTexts trainingText)
         where
             getSubTrainingTexts :: TrainingText -> [TrainingText]
@@ -60,4 +60,9 @@ getTrainingFilenames = do
 
 getTrainingStrings = getTrainingFilenames >>= mapM readFile
 
-main = getTrainingStrings >>= (map getTrainingText >> mapM putStrLn)
+main = do
+    trainingStrings <- getTrainingStrings
+    let trainingTexts = map getTrainingText trainingStrings
+    let chainSet = foldl (addTrainingTextToChainSet 5) ChainEnd trainingTexts
+    putStrLn $ show chainSet
+    return ()
