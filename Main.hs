@@ -1,7 +1,10 @@
 import qualified System.Directory as Directory
 import qualified System.FilePath.Posix as Posix
 
-main = do
+getTrainingFilenames = do
   fnames <- Directory.getDirectoryContents "training"
-  let desiredFnames = filter ((== ".txt") . Posix.takeExtension) fnames
-  mapM putStrLn desiredFnames
+  return $ map ("training/" ++) $ filter ((== ".txt") . Posix.takeExtension) fnames
+
+getTrainingStrings = getTrainingFilenames >>= mapM readFile
+
+main = getTrainingStrings >>= mapM putStrLn
