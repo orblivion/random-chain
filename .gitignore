@@ -1,6 +1,8 @@
 *.hi
 *.o
 *.swp
+/TODO
 /.cabal-sandbox
 /cabal.sandbox.config
 /dist
+/training
