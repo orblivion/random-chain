@@ -28,10 +28,21 @@ getChain (TrainingText str) desiredLength
             chainWords = take desiredLength str
             actualLength = length chainWords
 
--- Given a training text, which could be a subset of another training text,
--- assemble the next chainset
-getNextChainSet :: ChainSet -> TrainingText -> Int ->  ChainSet
-getNextChainSet chainSet tText chainLength = maybe chainSet (addChain chainSet) (getChain tText chainLength)
+
+addTrainingTextToChainSet :: ChainSet -> Int -> TrainingText -> ChainSet
+addTrainingTextToChainSet chainSet chainLength trainingText =
+    foldl getNextChainSet chainSet (getSubTrainingTexts trainingText)
+        where
+            getSubTrainingTexts :: TrainingText -> [TrainingText]
+            getSubTrainingTexts (TrainingText []) = []
+            getSubTrainingTexts (TrainingText words) =
+                (TrainingText words):(getSubTrainingTexts (TrainingText (tail words)))
+
+            -- Given a training text, which could be a subset of another training text,
+            -- assemble the next chainset
+            getNextChainSet :: ChainSet -> TrainingText -> ChainSet
+            getNextChainSet chainSet tText =
+                maybe chainSet (addChain chainSet) (getChain tText chainLength)
 
 getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ getTrainingWords trainingString
