@@ -4,7 +4,7 @@ import qualified Data.Map as DataMap
 import qualified Data.Text as DataText
 import qualified Data.Maybe as Maybe
 import qualified Text.Groom as Groom
-import qualified Debug.Trace as Trace
+-- import qualified Debug.Trace as Trace
 
 data Token = Token String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [Token] deriving Show
@@ -82,8 +82,10 @@ addTrainingTextToChain stateLength chain trainingText =
             -- Given a training text, which could be a subset of another training text,
             -- assemble the next chain
             getNextChain :: Chain -> TrainingText -> Chain
-            getNextChain chain' tText =
-                maybe chain' (addState chain' Nothing) (getState tText stateLength)
+            getNextChain chain' tText = maybe chain' (addState chain' $ mbNextStateToken tText) state where
+                mbNextStateToken (TrainingText tokens) =
+                    Maybe.listToMaybe . (take 1) . (drop stateLength) $ tokens
+                state = (getState tText stateLength)
 
 getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ getTokens trainingString
