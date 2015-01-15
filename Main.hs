@@ -11,19 +11,19 @@ data TrainingText = TrainingText [TrainingToken] deriving Show
 data State = State [TrainingToken] deriving Show
 data Chain = StateEnd | Chain (DataMap.Map TrainingToken Chain) deriving Show
 
-addChain :: Chain -> State -> Chain
-addChain chain (State []) = chain
-addChain StateEnd state = addChain (Chain (DataMap.fromList [])) state
-addChain (Chain csMap) (State stateTokens) = Chain newCsMap where
+addState :: Chain -> State -> Chain
+addState chain (State []) = chain
+addState StateEnd state = addState (Chain (DataMap.fromList [])) state
+addState (Chain csMap) (State stateTokens) = Chain newCsMap where
     newCsMap = (DataMap.insert stateHead newInnerChain csMap)
     stateHead = head stateTokens
     stateRest = State $ tail stateTokens
     oldInnerChain = Maybe.fromMaybe StateEnd $ DataMap.lookup stateHead csMap
-    newInnerChain = addChain oldInnerChain stateRest
+    newInnerChain = addState oldInnerChain stateRest
 
 -- Creates a state if it's long enough
-getChain :: TrainingText -> Int -> Maybe State
-getChain (TrainingText str) desiredLength
+getState :: TrainingText -> Int -> Maybe State
+getState (TrainingText str) desiredLength
     | actualLength == desiredLength = Just $ State stateTokens
     | otherwise = Nothing
         where
@@ -44,7 +44,7 @@ addTrainingTextToChain stateLength chain trainingText =
             -- assemble the next chain
             getNextChain :: Chain -> TrainingText -> Chain
             getNextChain chain' tText =
-                maybe chain' (addChain chain') (getChain tText stateLength)
+                maybe chain' (addState chain') (getState tText stateLength)
 
 getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
