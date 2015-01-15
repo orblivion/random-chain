@@ -5,30 +5,30 @@ import qualified Data.Text as DataText
 import qualified Data.Maybe as Maybe
 import qualified Text.Groom as Groom
 
-data TrainingWord = TrainingWord String deriving (Show, Eq, Ord)
-data TrainingText = TrainingText [TrainingWord] deriving Show
+data TrainingToken = TrainingToken String deriving (Show, Eq, Ord)
+data TrainingText = TrainingText [TrainingToken] deriving Show
 
-data State = State [TrainingWord] deriving Show
-data Chain = ChainEnd | Chain (DataMap.Map TrainingWord Chain) deriving Show
+data State = State [TrainingToken] deriving Show
+data Chain = ChainEnd | Chain (DataMap.Map TrainingToken Chain) deriving Show
 
 addChain :: Chain -> State -> Chain
 addChain chain (State []) = chain
 addChain ChainEnd state = addChain (Chain (DataMap.fromList [])) state
-addChain (Chain csMap) (State stateWords) = Chain newCsMap where
+addChain (Chain csMap) (State stateTokens) = Chain newCsMap where
     newCsMap = (DataMap.insert stateHead newInnerChain csMap)
-    stateHead = head stateWords
-    stateRest = State $ tail stateWords
+    stateHead = head stateTokens
+    stateRest = State $ tail stateTokens
     oldInnerChain = Maybe.fromMaybe ChainEnd $ DataMap.lookup stateHead csMap
     newInnerChain = addChain oldInnerChain stateRest
 
 -- Creates a state if it's long enough
 getChain :: TrainingText -> Int -> Maybe State
 getChain (TrainingText str) desiredLength
-    | actualLength == desiredLength = Just $ State stateWords
+    | actualLength == desiredLength = Just $ State stateTokens
     | otherwise = Nothing
         where
-            stateWords = take desiredLength str
-            actualLength = length stateWords
+            stateTokens = take desiredLength str
+            actualLength = length stateTokens
 
 
 addTrainingTextToChain :: Int -> Chain -> TrainingText -> Chain
@@ -37,8 +37,8 @@ addTrainingTextToChain stateLength chain trainingText =
         where
             getSubTrainingTexts :: TrainingText -> [TrainingText]
             getSubTrainingTexts (TrainingText []) = []
-            getSubTrainingTexts (TrainingText tWords) =
-                (TrainingText tWords):(getSubTrainingTexts (TrainingText (tail tWords)))
+            getSubTrainingTexts (TrainingText tTokens) =
+                (TrainingText tTokens):(getSubTrainingTexts (TrainingText (tail tTokens)))
 
             -- Given a training text, which could be a subset of another training text,
             -- assemble the next chain
@@ -47,14 +47,14 @@ addTrainingTextToChain stateLength chain trainingText =
                 maybe chain' (addChain chain') (getChain tText stateLength)
 
 getTrainingText :: String -> TrainingText
-getTrainingText trainingString = TrainingText $ getTrainingWords trainingString
+getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
     where
-        getTrainingWords :: String -> [TrainingWord]
-        getTrainingWords trainingString' = map (TrainingWord . cleanWord . DataText.unpack)
+        getTrainingTokens :: String -> [TrainingToken]
+        getTrainingTokens trainingString' = map (TrainingToken . cleanToken . DataText.unpack)
             $ DataText.splitOn (DataText.pack " ")
             $ DataText.pack trainingString'
-        cleanWord :: String -> String
-        cleanWord = id -- later we can remove commas, etc
+        cleanToken :: String -> String
+        cleanToken = id -- later we can remove commas, etc
 
 getTrainingFilenames :: IO [String]
 getTrainingFilenames = do
