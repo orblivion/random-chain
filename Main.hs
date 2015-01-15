@@ -13,26 +13,26 @@ data ChainSet = ChainEnd | ChainSet (DataMap.Map TrainingWord ChainSet) deriving
 
 addChain :: ChainSet -> State -> ChainSet
 addChain chainSet (State []) = chainSet
-addChain ChainEnd chain = addChain (ChainSet (DataMap.fromList [])) chain
-addChain (ChainSet csMap) (State chainWords) = ChainSet newCsMap where
-    newCsMap = (DataMap.insert chainHead newInnerChainSet csMap)
-    chainHead = head chainWords
-    chainRest = State $ tail chainWords
-    oldInnerChainSet = Maybe.fromMaybe ChainEnd $ DataMap.lookup chainHead csMap
-    newInnerChainSet = addChain oldInnerChainSet chainRest
+addChain ChainEnd state = addChain (ChainSet (DataMap.fromList [])) state
+addChain (ChainSet csMap) (State stateWords) = ChainSet newCsMap where
+    newCsMap = (DataMap.insert stateHead newInnerChainSet csMap)
+    stateHead = head stateWords
+    stateRest = State $ tail stateWords
+    oldInnerChainSet = Maybe.fromMaybe ChainEnd $ DataMap.lookup stateHead csMap
+    newInnerChainSet = addChain oldInnerChainSet stateRest
 
--- Creates a chain if it's long enough
+-- Creates a state if it's long enough
 getChain :: TrainingText -> Int -> Maybe State
 getChain (TrainingText str) desiredLength
-    | actualLength == desiredLength = Just $ State chainWords
+    | actualLength == desiredLength = Just $ State stateWords
     | otherwise = Nothing
         where
-            chainWords = take desiredLength str
-            actualLength = length chainWords
+            stateWords = take desiredLength str
+            actualLength = length stateWords
 
 
 addTrainingTextToChainSet :: Int -> ChainSet -> TrainingText -> ChainSet
-addTrainingTextToChainSet chainLength chainSet trainingText =
+addTrainingTextToChainSet stateLength chainSet trainingText =
     foldl getNextChainSet chainSet (getSubTrainingTexts trainingText)
         where
             getSubTrainingTexts :: TrainingText -> [TrainingText]
@@ -44,7 +44,7 @@ addTrainingTextToChainSet chainLength chainSet trainingText =
             -- assemble the next chainset
             getNextChainSet :: ChainSet -> TrainingText -> ChainSet
             getNextChainSet chainSet' tText =
-                maybe chainSet' (addChain chainSet') (getChain tText chainLength)
+                maybe chainSet' (addChain chainSet') (getChain tText stateLength)
 
 getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ getTrainingWords trainingString
