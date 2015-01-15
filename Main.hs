@@ -9,16 +9,16 @@ data TrainingToken = TrainingToken String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [TrainingToken] deriving Show
 
 data State = State [TrainingToken] deriving Show
-data Chain = ChainEnd | Chain (DataMap.Map TrainingToken Chain) deriving Show
+data Chain = StateEnd | Chain (DataMap.Map TrainingToken Chain) deriving Show
 
 addChain :: Chain -> State -> Chain
 addChain chain (State []) = chain
-addChain ChainEnd state = addChain (Chain (DataMap.fromList [])) state
+addChain StateEnd state = addChain (Chain (DataMap.fromList [])) state
 addChain (Chain csMap) (State stateTokens) = Chain newCsMap where
     newCsMap = (DataMap.insert stateHead newInnerChain csMap)
     stateHead = head stateTokens
     stateRest = State $ tail stateTokens
-    oldInnerChain = Maybe.fromMaybe ChainEnd $ DataMap.lookup stateHead csMap
+    oldInnerChain = Maybe.fromMaybe StateEnd $ DataMap.lookup stateHead csMap
     newInnerChain = addChain oldInnerChain stateRest
 
 -- Creates a state if it's long enough
@@ -54,7 +54,7 @@ getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
             $ DataText.splitOn (DataText.pack " ")
             $ DataText.pack trainingString'
         cleanToken :: String -> String
-        cleanToken = id -- later we can remove commas, etc
+        cleanToken = id -- later we can remove commas, remove caps
 
 getTrainingFilenames :: IO [String]
 getTrainingFilenames = do
@@ -68,6 +68,6 @@ main :: IO ()
 main = do
     trainingStrings <- getTrainingStrings
     let trainingTexts = map getTrainingText trainingStrings
-    let chain = foldl (addTrainingTextToChain 5) ChainEnd trainingTexts
+    let chain = foldl (addTrainingTextToChain 5) StateEnd trainingTexts
     putStrLn $ Groom.groom chain
     return ()
