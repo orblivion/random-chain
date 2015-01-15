@@ -9,17 +9,37 @@ data TrainingToken = TrainingToken String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [TrainingToken] deriving Show
 
 data State = State [TrainingToken] deriving Show
-data Chain = StateEnd | Chain (DataMap.Map TrainingToken Chain) deriving Show
+
+type StateTreeNode = DataMap.Map TrainingToken StateTree
+data StateTree = StateTree StateTreeNode deriving Show
+data Chain = Chain StateTree deriving Show
+
+emptyStateTree :: StateTree
+emptyStateTree = StateTree $ DataMap.fromList []
+
+emptyChain :: Chain
+emptyChain = Chain emptyStateTree
 
 addState :: Chain -> State -> Chain
-addState chain (State []) = chain
-addState StateEnd state = addState (Chain (DataMap.fromList [])) state
-addState (Chain csMap) (State stateTokens) = Chain newCsMap where
-    newCsMap = (DataMap.insert stateHead newInnerChain csMap)
+addState (Chain stateTree) (State stateTokens) = Chain (addState' stateTree stateTokens)
+
+addState' :: StateTree -> [TrainingToken] -> StateTree
+addState' stateTree [] = stateTree 
+addState' (StateTree stateTreeNode) stateTokens = newStateTree where
+    newStateTree :: StateTree
+    newStateTree = StateTree (DataMap.insert stateHead newInnerStateTree stateTreeNode)
+
+    stateHead :: TrainingToken
     stateHead = head stateTokens
-    stateRest = State $ tail stateTokens
-    oldInnerChain = Maybe.fromMaybe StateEnd $ DataMap.lookup stateHead csMap
-    newInnerChain = addState oldInnerChain stateRest
+
+    stateRest :: [TrainingToken]
+    stateRest = tail stateTokens
+
+    oldInnerStateTree :: StateTree
+    oldInnerStateTree = Maybe.fromMaybe emptyStateTree $ DataMap.lookup stateHead stateTreeNode
+
+    newInnerStateTree :: StateTree
+    newInnerStateTree = addState' oldInnerStateTree stateRest
 
 -- Creates a state if it's long enough
 getState :: TrainingText -> Int -> Maybe State
@@ -68,6 +88,6 @@ main :: IO ()
 main = do
     trainingStrings <- getTrainingStrings
     let trainingTexts = map getTrainingText trainingStrings
-    let chain = foldl (addTrainingTextToChain 5) StateEnd trainingTexts
+    let chain = foldl (addTrainingTextToChain 5) emptyChain trainingTexts
     putStrLn $ Groom.groom chain
     return ()
