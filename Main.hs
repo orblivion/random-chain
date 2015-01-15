@@ -6,15 +6,41 @@ import qualified Data.Maybe as Maybe
 import qualified Text.Groom as Groom
 -- import qualified Debug.Trace as Trace
 
-data Token = Token String deriving (Show, Eq, Ord)
-data TrainingText = TrainingText [Token] deriving Show
-
 data State = State [Token] deriving Show
 
 type StateTreeNode = DataMap.Map Token StateTree
 type NextTokenCounts = DataMap.Map Token Int
 data StateTree = StateLeaf NextTokenCounts | StateBranch StateTreeNode deriving Show
 data Chain = Chain StateTree deriving Show
+
+------------------------
+-- Getting Training Text
+------------------------
+
+data Token = Token String deriving (Show, Eq, Ord)
+data TrainingText = TrainingText [Token] deriving Show
+
+getTrainingText :: String -> TrainingText
+getTrainingText trainingString = TrainingText $ getTokens trainingString
+    where
+        getTokens :: String -> [Token]
+        getTokens trainingString' = map (Token . cleanToken . DataText.unpack)
+            $ DataText.splitOn (DataText.pack " ")
+            $ DataText.pack trainingString'
+        cleanToken :: String -> String
+        cleanToken = id -- later we can remove commas, remove caps
+
+getTrainingFilenames :: IO [String]
+getTrainingFilenames = do
+  fnames <- Directory.getDirectoryContents "training"
+  return $ map ("training/" ++) $ filter ((== ".txt") . Posix.takeExtension) fnames
+
+getTrainingStrings :: IO [String]
+getTrainingStrings = getTrainingFilenames >>= mapM readFile
+
+---------------------
+-- Creating the Chain
+---------------------
 
 emptyStateBranch :: StateTree
 emptyStateBranch = StateBranch $ DataMap.fromList []
@@ -87,23 +113,10 @@ addTrainingTextToChain stateLength chain trainingText =
                     Maybe.listToMaybe . (take 1) . (drop stateLength) $ tokens
                 state = (getState tText stateLength)
 
-getTrainingText :: String -> TrainingText
-getTrainingText trainingString = TrainingText $ getTokens trainingString
-    where
-        getTokens :: String -> [Token]
-        getTokens trainingString' = map (Token . cleanToken . DataText.unpack)
-            $ DataText.splitOn (DataText.pack " ")
-            $ DataText.pack trainingString'
-        cleanToken :: String -> String
-        cleanToken = id -- later we can remove commas, remove caps
+------------------------
+-- Main
+------------------------
 
-getTrainingFilenames :: IO [String]
-getTrainingFilenames = do
-  fnames <- Directory.getDirectoryContents "training"
-  return $ map ("training/" ++) $ filter ((== ".txt") . Posix.takeExtension) fnames
-
-getTrainingStrings :: IO [String]
-getTrainingStrings = getTrainingFilenames >>= mapM readFile
 
 main :: IO ()
 main = do
