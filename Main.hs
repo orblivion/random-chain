@@ -9,17 +9,17 @@ data TrainingWord = TrainingWord String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [TrainingWord] deriving Show
 
 data State = State [TrainingWord] deriving Show
-data ChainSet = ChainEnd | ChainSet (DataMap.Map TrainingWord ChainSet) deriving Show
+data Chain = ChainEnd | Chain (DataMap.Map TrainingWord Chain) deriving Show
 
-addChain :: ChainSet -> State -> ChainSet
-addChain chainSet (State []) = chainSet
-addChain ChainEnd state = addChain (ChainSet (DataMap.fromList [])) state
-addChain (ChainSet csMap) (State stateWords) = ChainSet newCsMap where
-    newCsMap = (DataMap.insert stateHead newInnerChainSet csMap)
+addChain :: Chain -> State -> Chain
+addChain chain (State []) = chain
+addChain ChainEnd state = addChain (Chain (DataMap.fromList [])) state
+addChain (Chain csMap) (State stateWords) = Chain newCsMap where
+    newCsMap = (DataMap.insert stateHead newInnerChain csMap)
     stateHead = head stateWords
     stateRest = State $ tail stateWords
-    oldInnerChainSet = Maybe.fromMaybe ChainEnd $ DataMap.lookup stateHead csMap
-    newInnerChainSet = addChain oldInnerChainSet stateRest
+    oldInnerChain = Maybe.fromMaybe ChainEnd $ DataMap.lookup stateHead csMap
+    newInnerChain = addChain oldInnerChain stateRest
 
 -- Creates a state if it's long enough
 getChain :: TrainingText -> Int -> Maybe State
@@ -31,9 +31,9 @@ getChain (TrainingText str) desiredLength
             actualLength = length stateWords
 
 
-addTrainingTextToChainSet :: Int -> ChainSet -> TrainingText -> ChainSet
-addTrainingTextToChainSet stateLength chainSet trainingText =
-    foldl getNextChainSet chainSet (getSubTrainingTexts trainingText)
+addTrainingTextToChain :: Int -> Chain -> TrainingText -> Chain
+addTrainingTextToChain stateLength chain trainingText =
+    foldl getNextChain chain (getSubTrainingTexts trainingText)
         where
             getSubTrainingTexts :: TrainingText -> [TrainingText]
             getSubTrainingTexts (TrainingText []) = []
@@ -41,10 +41,10 @@ addTrainingTextToChainSet stateLength chainSet trainingText =
                 (TrainingText tWords):(getSubTrainingTexts (TrainingText (tail tWords)))
 
             -- Given a training text, which could be a subset of another training text,
-            -- assemble the next chainset
-            getNextChainSet :: ChainSet -> TrainingText -> ChainSet
-            getNextChainSet chainSet' tText =
-                maybe chainSet' (addChain chainSet') (getChain tText stateLength)
+            -- assemble the next chain
+            getNextChain :: Chain -> TrainingText -> Chain
+            getNextChain chain' tText =
+                maybe chain' (addChain chain') (getChain tText stateLength)
 
 getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ getTrainingWords trainingString
@@ -68,6 +68,6 @@ main :: IO ()
 main = do
     trainingStrings <- getTrainingStrings
     let trainingTexts = map getTrainingText trainingStrings
-    let chainSet = foldl (addTrainingTextToChainSet 5) ChainEnd trainingTexts
-    putStrLn $ Groom.groom chainSet
+    let chain = foldl (addTrainingTextToChain 5) ChainEnd trainingTexts
+    putStrLn $ Groom.groom chain
     return ()
