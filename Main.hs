@@ -12,16 +12,17 @@ data State = State [TrainingToken] deriving Show
 
 type StateTreeNode = DataMap.Map TrainingToken StateTree
 data StateTree = StateTree StateTreeNode deriving Show
-data Chain = Chain StateTree deriving Show
+data Chain = Chain [(Chain, Int)] StateTree deriving Show
 
 emptyStateTree :: StateTree
 emptyStateTree = StateTree $ DataMap.fromList []
 
 emptyChain :: Chain
-emptyChain = Chain emptyStateTree
+emptyChain = Chain [] emptyStateTree
 
 addState :: Chain -> State -> Chain
-addState (Chain stateTree) (State stateTokens) = Chain (addState' stateTree stateTokens)
+addState (Chain connections stateTree) (State stateTokens) =
+    Chain connections (addState' stateTree stateTokens)
 
 addState' :: StateTree -> [TrainingToken] -> StateTree
 addState' stateTree [] = stateTree 
