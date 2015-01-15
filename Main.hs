@@ -4,43 +4,61 @@ import qualified Data.Map as DataMap
 import qualified Data.Text as DataText
 import qualified Data.Maybe as Maybe
 import qualified Text.Groom as Groom
+import qualified Debug.Trace as Trace
 
-data TrainingToken = TrainingToken String deriving (Show, Eq, Ord)
-data TrainingText = TrainingText [TrainingToken] deriving Show
+data Token = Token String deriving (Show, Eq, Ord)
+data TrainingText = TrainingText [Token] deriving Show
 
-data State = State [TrainingToken] deriving Show
+data State = State [Token] deriving Show
 
-type StateTreeNode = DataMap.Map TrainingToken StateTree
-data StateTree = StateTree StateTreeNode deriving Show
-data Chain = Chain [(Chain, Int)] StateTree deriving Show
+type StateTreeNode = DataMap.Map Token StateTree
+type NextTokenCounts = DataMap.Map Token Int
+data StateTree = StateLeaf NextTokenCounts | StateBranch StateTreeNode deriving Show
+data Chain = Chain StateTree deriving Show
 
-emptyStateTree :: StateTree
-emptyStateTree = StateTree $ DataMap.fromList []
+emptyStateBranch :: StateTree
+emptyStateBranch = StateBranch $ DataMap.fromList []
+emptyStateLeaf :: StateTree
+emptyStateLeaf = StateLeaf $ DataMap.fromList []
 
 emptyChain :: Chain
-emptyChain = Chain [] emptyStateTree
+emptyChain = Chain emptyStateBranch
 
-addState :: Chain -> State -> Chain
-addState (Chain connections stateTree) (State stateTokens) =
-    Chain connections (addState' stateTree stateTokens)
+addState :: Chain -> Maybe Token -> State -> Chain
+addState (Chain stateTree) mbNextStateToken (State stateTokens) =
+    Chain (addState' stateTree stateTokens mbNextStateToken)
 
-addState' :: StateTree -> [TrainingToken] -> StateTree
-addState' stateTree [] = stateTree 
-addState' (StateTree stateTreeNode) stateTokens = newStateTree where
+addState' :: StateTree -> [Token] -> Maybe Token -> StateTree
+addState' (StateLeaf nextTokenCounts) [] mbNextStateToken =
+    StateLeaf (newNextTokenCounts mbNextStateToken)
+        where
+            newNextTokenCounts Nothing = nextTokenCounts
+            newNextTokenCounts (Just nextStateToken) =
+                DataMap.insert nextStateToken (oldCount + 1) nextTokenCounts
+                    where
+                        oldCount = Maybe.fromMaybe 0 $ DataMap.lookup nextStateToken nextTokenCounts
+
+addState' (StateBranch stateTreeNode) stateTokens mbNextStateToken = newStateTree where
     newStateTree :: StateTree
-    newStateTree = StateTree (DataMap.insert stateHead newInnerStateTree stateTreeNode)
+    newStateTree = StateBranch (DataMap.insert stateHead newInnerStateTree stateTreeNode)
 
-    stateHead :: TrainingToken
+    stateHead :: Token
     stateHead = head stateTokens
 
-    stateRest :: [TrainingToken]
+    stateRest :: [Token]
     stateRest = tail stateTokens
 
+    defaultInnerStateTree :: StateTree
+    defaultInnerStateTree
+        | stateRest == [] = emptyStateLeaf
+        | otherwise       = emptyStateBranch
+
     oldInnerStateTree :: StateTree
-    oldInnerStateTree = Maybe.fromMaybe emptyStateTree $ DataMap.lookup stateHead stateTreeNode
+    oldInnerStateTree =
+        Maybe.fromMaybe defaultInnerStateTree $ DataMap.lookup stateHead stateTreeNode
 
     newInnerStateTree :: StateTree
-    newInnerStateTree = addState' oldInnerStateTree stateRest
+    newInnerStateTree = addState' oldInnerStateTree stateRest mbNextStateToken
 
 -- Creates a state if it's long enough
 getState :: TrainingText -> Int -> Maybe State
@@ -65,13 +83,13 @@ addTrainingTextToChain stateLength chain trainingText =
             -- assemble the next chain
             getNextChain :: Chain -> TrainingText -> Chain
             getNextChain chain' tText =
-                maybe chain' (addState chain') (getState tText stateLength)
+                maybe chain' (addState chain' Nothing) (getState tText stateLength)
 
 getTrainingText :: String -> TrainingText
-getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
+getTrainingText trainingString = TrainingText $ getTokens trainingString
     where
-        getTrainingTokens :: String -> [TrainingToken]
-        getTrainingTokens trainingString' = map (TrainingToken . cleanToken . DataText.unpack)
+        getTokens :: String -> [Token]
+        getTokens trainingString' = map (Token . cleanToken . DataText.unpack)
             $ DataText.splitOn (DataText.pack " ")
             $ DataText.pack trainingString'
         cleanToken :: String -> String
