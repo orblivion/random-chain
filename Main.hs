@@ -8,23 +8,23 @@ import qualified Text.Groom as Groom
 data TrainingWord = TrainingWord String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [TrainingWord] deriving Show
 
-data Chain = Chain [TrainingWord] deriving Show
+data State = State [TrainingWord] deriving Show
 data ChainSet = ChainEnd | ChainSet (DataMap.Map TrainingWord ChainSet) deriving Show
 
-addChain :: ChainSet -> Chain -> ChainSet
-addChain chainSet (Chain []) = chainSet
+addChain :: ChainSet -> State -> ChainSet
+addChain chainSet (State []) = chainSet
 addChain ChainEnd chain = addChain (ChainSet (DataMap.fromList [])) chain
-addChain (ChainSet csMap) (Chain chainWords) = ChainSet newCsMap where
+addChain (ChainSet csMap) (State chainWords) = ChainSet newCsMap where
     newCsMap = (DataMap.insert chainHead newInnerChainSet csMap)
     chainHead = head chainWords
-    chainRest = Chain $ tail chainWords
+    chainRest = State $ tail chainWords
     oldInnerChainSet = Maybe.fromMaybe ChainEnd $ DataMap.lookup chainHead csMap
     newInnerChainSet = addChain oldInnerChainSet chainRest
 
 -- Creates a chain if it's long enough
-getChain :: TrainingText -> Int -> Maybe Chain
+getChain :: TrainingText -> Int -> Maybe State
 getChain (TrainingText str) desiredLength
-    | actualLength == desiredLength = Just $ Chain chainWords
+    | actualLength == desiredLength = Just $ State chainWords
     | otherwise = Nothing
         where
             chainWords = take desiredLength str
