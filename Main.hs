@@ -6,13 +6,6 @@ import qualified System.Random as Random
 -- import qualified Text.Groom as Groom
 -- import qualified Debug.Trace as Trace
 
-data State = State {getTokens :: [Token]} deriving Show
-
-type StateTreeNode = DataMap.Map Token StateTree
-type NextTokenCounts = DataMap.Map Token Int
-data StateTree = StateLeaf NextTokenCounts | StateBranch StateTreeNode deriving (Show, Eq)
-data Chain = Chain {getStateTree :: StateTree} deriving Show
-
 ------------------------
 -- Getting Training Text
 ------------------------
@@ -43,6 +36,13 @@ getTrainingStrings = getTrainingFilenames >>= mapM readFile
 ---------------------
 -- Creating the Chain
 ---------------------
+
+data State = State {getTokens :: [Token]} deriving Show
+
+type StateTreeNode = DataMap.Map Token StateTree
+type NextTokenCounts = DataMap.Map Token Int
+data StateTree = StateLeaf NextTokenCounts | StateBranch StateTreeNode deriving (Show, Eq)
+data Chain = Chain {getStateTree :: StateTree} deriving Show
 
 emptyStateBranch :: StateTree
 emptyStateBranch = StateBranch $ DataMap.fromList []
