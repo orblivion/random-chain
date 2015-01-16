@@ -5,5 +5,4 @@
 /.cabal-sandbox
 /cabal.sandbox.config
 /dist
-/training
-/random-chain
+/training/*.txt
