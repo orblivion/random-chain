@@ -4,8 +4,8 @@ import qualified Data.Map as DataMap
 import qualified Data.Text as DataText
 import qualified Data.List as DataList
 import qualified Data.Maybe as Maybe
-import qualified Text.Groom as Groom
 import qualified System.Random as Random
+-- import qualified Text.Groom as Groom
 -- import qualified Debug.Trace as Trace
 
 data State = State {getTokens :: [Token]} deriving Show
@@ -23,10 +23,10 @@ data Token = Token String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [Token] deriving Show
 
 getTrainingText :: String -> TrainingText
-getTrainingText trainingString = TrainingText $ getTokens trainingString
+getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
     where
-        getTokens :: String -> [Token]
-        getTokens trainingString' = map (Token . cleanToken . DataText.unpack)
+        getTrainingTokens :: String -> [Token]
+        getTrainingTokens trainingString' = map (Token . cleanToken . DataText.unpack)
             $ DataText.splitOn (DataText.pack " ")
             $ DataText.pack trainingString'
         cleanToken :: String -> String
@@ -65,6 +65,8 @@ addState' (StateLeaf nextTokenCounts) [] mbNextStateToken =
                 DataMap.insert nextStateToken (oldCount + 1) nextTokenCounts
                     where
                         oldCount = Maybe.fromMaybe 0 $ DataMap.lookup nextStateToken nextTokenCounts
+addState' (StateLeaf _) _ _ = error $ "StateLeaf reached with extra tokens - "
+    ++ " Make sure token lists are all of the same length"
 
 addState' (StateBranch stateTreeNode) stateTokens mbNextStateToken = newStateTree where
     newStateTree :: StateTree
@@ -141,17 +143,20 @@ genFirstState (Chain baseSTree) initStdGen = State $ genFirstState' stdGens base
     stdGens = genStdGens initStdGen
 
     genFirstState' :: [Random.StdGen] -> StateTree -> [Token]
+    genFirstState' [] _ = error "genFirstState': stdGen list should be infinite"
     genFirstState' _ (StateLeaf _) = []
     genFirstState' (stdGen:nextStdGens) stateTree = thisToken:nextTokens where
         thisToken = (genTokenFromTree stdGen stateTree)
         nextTokens = genFirstState' nextStdGens (walkStateTree stateTree [thisToken])
 
+-- Given a chain, and a first state out of the chain, get tokens that
+-- come *after* that state
 genNextTokens :: Chain -> Random.StdGen -> State ->  [Token]
 genNextTokens (Chain baseSTree) initStdGen firstState = nextTokens where
     stdGens = genStdGens initStdGen
-    State firstTokens = firstState
 
     genNextStates :: [Random.StdGen] -> State -> [State]
+    genNextStates [] _ = error "genNextStates: stdGen list should be infinite"
     genNextStates (stdGen:nextStdGens) thisState 
         | isEndState baseSTree nextState = nextState:genNextStates nextStdGens nextState
         | otherwise = [nextState]
@@ -173,9 +178,10 @@ genStdGens stdGen = stdGen1:stdGen2:(genStdGens stdGen1) where
     (stdGen1, stdGen2) = Random.split stdGen
 
 walkStateTree :: StateTree -> [Token] -> StateTree
-walkStateTree stateTree [] = stateTree
+walkStateTree stateTree [] = stateTree -- We want this for either
 walkStateTree (StateBranch stateTreeNode) (headToken:tailTokens) =
     walkStateTree (Maybe.fromJust (DataMap.lookup headToken stateTreeNode)) tailTokens
+walkStateTree (StateLeaf _) _ = error "StateLeaf reached with extra tokens"
 
 randomPick :: Random.StdGen -> [k] -> k
 randomPick stdGen lst = lst !! (fst $ Random.randomR (0, (length lst) - 1) stdGen)
@@ -183,17 +189,18 @@ randomPick stdGen lst = lst !! (fst $ Random.randomR (0, (length lst) - 1) stdGe
 genTokenFromTree :: Random.StdGen -> StateTree -> Token
 genTokenFromTree stdGen (StateBranch stateTreeNode) = randomKey stdGen stateTreeNode where
     randomKey :: Random.StdGen -> DataMap.Map k v -> k
-    randomKey stdGen map' = randomPick stdGen $ DataMap.keys map'
+    randomKey rkStdGen map' = randomPick rkStdGen $ DataMap.keys map'
 
 genTokenFromTree stdGen (StateLeaf nextTokenCounts) = weightedRandomKey stdGen nextTokenCounts where
     weightedRandomKey :: Random.StdGen -> DataMap.Map k Int -> k
-    weightedRandomKey stdGen map' = randomPick stdGen $ concatMap replicateTuple kvPairs where
+    weightedRandomKey krkStdGen map' = randomPick krkStdGen $ concatMap replicateTuple kvPairs where
         replicateTuple = (uncurry (flip replicate))
         kvPairs = (DataMap.assocs map')
 
 renderTokens :: [Token] -> String
 renderTokens tokens = DataList.intercalate " " $ map renderToken tokens
 
+renderToken :: Token -> String
 renderToken (Token str) = str
 
 ------------------------
