@@ -8,7 +8,6 @@ import qualified System.Random as Random
 -- import qualified Text.Groom as Groom
 -- import qualified Debug.Trace as Trace
 
-
 data State = State {getTokens :: [Token]} deriving Show
 
 type StateTreeNode = DataMap.Map Token StateTree
@@ -159,8 +158,8 @@ genNextTokens (Chain baseSTree) initStdGen firstState = nextTokens where
     genNextStates :: [Random.StdGen] -> State -> [State]
     genNextStates [] _ = error "genNextStates: stdGen list should be infinite"
     genNextStates (stdGen:nextStdGens) thisState 
-        | isEndState baseSTree nextState = nextState:genNextStates nextStdGens nextState
-        | otherwise = [nextState]
+        | isEndState baseSTree nextState = [nextState]
+        | otherwise = nextState:genNextStates nextStdGens nextState
             where
                 nextState = State $ nextStateStartTokens ++ [nextStateLastToken]
                 nextStateStartTokens = tail $ getTokens thisState
@@ -210,7 +209,7 @@ renderToken (Token str) = str
 main :: IO ()
 main = do
     trainingStrings <- getTrainingStrings
-    let chainLength = 5
+    let chainLength = 3
     let trainingTexts = map getTrainingText trainingStrings
     let chain = foldl (addTrainingTextToChain chainLength) emptyChain trainingTexts
     -- putStrLn $ Groom.groom chain
