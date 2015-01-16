@@ -144,6 +144,8 @@ genFirstState (Chain baseSTree) initStdGen = State $ genFirstStateFull stdGens b
     genFirstStateRest (stdGen:nextStdGens) stateTree = thisToken:nextTokens where
         thisToken = (genTokenFromTree stdGen stateTree)
         nextTokens = genFirstStateRest nextStdGens (walkStateTree stateTree [thisToken])
+
+    -- Force it to start with a TextStart token, so generated text will make more sense.
     genFirstStateFull stdGens' stateTree = TextStart:nextTokens where
         nextTokens = genFirstStateRest stdGens' (walkStateTree stateTree [TextStart])
 
