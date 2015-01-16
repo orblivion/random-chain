@@ -17,9 +17,7 @@ getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ TextStart:(getTrainingTokens trainingString)
     where
         getTrainingTokens :: String -> [Token]
-        getTrainingTokens trainingString' = map Word
-            $ words
-            $ trainingString'
+        getTrainingTokens trainingString' = map Word $ words trainingString'
 
 isSufficientTrainingText :: Int -> TrainingText -> Bool
 -- + 1 for the TextStart token
