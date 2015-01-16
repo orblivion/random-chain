@@ -35,6 +35,22 @@ getTrainingStrings = getTrainingFilenames >>= mapM readFile
 -- Creating the Chain
 ---------------------
 
+{-
+
+The way this is set up is that "States" in the chain (Markov Chain,
+assuming I'm doing it right) are of length `stateLength`. The Chain
+holds a StateTree, which contains a space efficient combination of all
+states. The branches of the tree are Maps from Token to the next node.
+Putting the Tokens of a state into the statetree in order will lead you
+to the state's corresponding leaf, which is again a Map, but from Token
+to integer. Each token chosen at a leaf, along with the last
+`stateLength - 1` tokens in the given state, identifies a next state.
+The corresponding integer is a count of how many times it is a next
+state from the given state.
+
+-}
+
+
 data State = State {getTokens :: [Token]} deriving Show
 
 type StateTreeNode = DataMap.Map Token StateTree
@@ -118,6 +134,32 @@ addTrainingTextToChain stateLength chain trainingText =
 ------------------------
 -- Generating Random Stuff
 ------------------------
+
+{-
+
+Generating random text involves randomly finding a starting state, and
+randomly finding subsequent states. We kept a count of how many
+transitions from one state to another we made, and we can bias our
+randomly picked subsequent states accordingly. However we cannot use a
+bias in creating a starting state (even though both processes involve
+picking a series of tokens).
+
+Picking a starting state involves traversing the stateTree picking
+(unbiased) random paths. Once we reach a leaf, we can pick a (biased)
+random next token. We take the current state, cut off the beginning, put
+on the new token, and we have a new state. We use that to traverse the
+stateTree again, and we're at a new leaf. We can grab a new (biased)
+random token from here. So we can see that once we have our first state,
+subsequent tokens are all grabbed with a bias.
+
+Also, if we reach the end state of a training text, we might get stuck;
+chances are, there's not a state transition that we can make from
+there. If that happens we just start the process over.
+
+This whole thing loops infinitely, and it's up to the caller to cut it
+off.
+
+-}
 
 genText :: Chain -> Random.StdGen -> String
 genText chain initStdGen = renderTokens $ genTokens initStdGen where
