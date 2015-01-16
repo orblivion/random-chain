@@ -219,7 +219,7 @@ main = do
     let chainLength = 3
     let trainingTexts = map getTrainingText trainingStrings
     let chain = foldl (addTrainingTextToChain chainLength) emptyChain trainingTexts
-    if getStateTree chain == emptyStateLeaf
+    if getStateTree chain == emptyStateBranch
         then putStrLn "Insufficient training texts found"
         else do
             -- putStrLn $ Groom.groom chain
