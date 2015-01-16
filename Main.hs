@@ -8,6 +8,7 @@ import qualified System.Random as Random
 -- import qualified Text.Groom as Groom
 -- import qualified Debug.Trace as Trace
 
+
 data State = State {getTokens :: [Token]} deriving Show
 
 type StateTreeNode = DataMap.Map Token StateTree
@@ -167,10 +168,9 @@ genNextTokens (Chain baseSTree) initStdGen firstState = nextTokens where
                 nextStateLastToken = (genTokenFromTree stdGen lastStateBranch)
 
     nextTokens :: [Token]
-    nextTokens = leadTokens ++ lastTokens where
+    nextTokens = lastTokenEachState where
         states = genNextStates stdGens firstState
-        leadTokens = map (head . getTokens) states -- the first tokens of all states
-        lastTokens = tail $ getTokens $ last states -- the remainingg tokens of the last state
+        lastTokenEachState = map (last . getTokens) states
 
 -- Get an endless list of random sources based on a random source
 genStdGens :: Random.StdGen -> [Random.StdGen]
@@ -214,5 +214,6 @@ main = do
     let trainingTexts = map getTrainingText trainingStrings
     let chain = foldl (addTrainingTextToChain chainLength) emptyChain trainingTexts
     -- putStrLn $ Groom.groom chain
-    putStrLn $ take 10000 $ genText chain (Random.mkStdGen 3)
+    stdGen <- Random.getStdGen
+    putStrLn $ take 10000 $ genText chain stdGen
     return ()
