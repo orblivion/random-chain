@@ -118,15 +118,20 @@ addTrainingTextToChain stateLength chain trainingText =
 ------------------------
 
 genText :: Chain -> Random.StdGen -> String
-genText chain stdGen = renderTokens $ firstTokens ++ nextTokens where
-    (firstStateStdGen, nextTokensStdGen) = Random.split stdGen
+genText chain initStdGen = renderTokens $ genTokens initStdGen where
+    genTokens stdGen = firstTokens ++ nextTokens ++ nextRunTokens where
+        (firstStateStdGen, stdGen') = Random.split stdGen
+        (nextTokensStdGen, nextRunStdGen) = Random.split stdGen'
 
-    -- first state
-    firstState = genFirstState chain firstStateStdGen
-    State firstTokens = firstState
+        -- first state
+        firstState = genFirstState chain firstStateStdGen
+        State firstTokens = firstState
 
-    -- subsequent states
-    nextTokens = genNextTokens chain nextTokensStdGen firstState
+        -- subsequent states
+        nextTokens = genNextTokens chain nextTokensStdGen firstState
+
+        -- next run, in case we hit an end
+        nextRunTokens = genTokens nextRunStdGen
 
 -- Our first so many tokens can't be due to a transition from an old State,
 -- since a State requires a full roster of tokens
@@ -173,8 +178,9 @@ genNextTokens (Chain baseSTree) initStdGen firstState = nextTokens where
 
 -- Get an endless list of random sources based on a random source
 genStdGens :: Random.StdGen -> [Random.StdGen]
-genStdGens stdGen = stdGen1:stdGen2:(genStdGens stdGen1) where
-    (stdGen1, stdGen2) = Random.split stdGen
+genStdGens stdGen = stdGen1:stdGen2:(genStdGens stdGen3) where
+    (stdGen1, stdGen') = Random.split stdGen
+    (stdGen2, stdGen3) = Random.split stdGen'
 
 walkStateTree :: StateTree -> [Token] -> StateTree
 walkStateTree stateTree [] = stateTree -- We want this for either
