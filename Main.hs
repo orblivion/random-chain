@@ -1,7 +1,6 @@
 import qualified System.Directory as Directory
 import qualified System.FilePath.Posix as Posix
 import qualified Data.Map as DataMap
-import qualified Data.List as DataList
 import qualified Data.Maybe as Maybe
 import qualified System.Random as Random
 -- import qualified Text.Groom as Groom
@@ -18,11 +17,11 @@ data Chain = Chain StateTree deriving Show
 -- Getting Training Text
 ------------------------
 
-data Token = Word String deriving (Show, Eq, Ord)
+data Token = TextStart | Word String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [Token] deriving Show
 
 getTrainingText :: String -> TrainingText
-getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
+getTrainingText trainingString = TrainingText $ TextStart:(getTrainingTokens trainingString)
     where
         getTrainingTokens :: String -> [Token]
         getTrainingTokens trainingString' = map Word
@@ -136,15 +135,17 @@ isEndState :: StateTree -> State -> Bool
 isEndState bStateTree (State tokens) = walkStateTree bStateTree tokens == emptyStateLeaf
 
 genFirstState :: Chain -> Random.StdGen -> State
-genFirstState (Chain baseSTree) initStdGen = State $ genFirstState' stdGens baseSTree where
+genFirstState (Chain baseSTree) initStdGen = State $ genFirstStateFull stdGens baseSTree where
     stdGens = genStdGens initStdGen
 
-    genFirstState' :: [Random.StdGen] -> StateTree -> [Token]
-    genFirstState' [] _ = error "genFirstState': stdGen list should be infinite"
-    genFirstState' _ (StateLeaf _) = []
-    genFirstState' (stdGen:nextStdGens) stateTree = thisToken:nextTokens where
+    genFirstStateRest :: [Random.StdGen] -> StateTree -> [Token]
+    genFirstStateRest [] _ = error "genFirstStateRest: stdGen list should be infinite"
+    genFirstStateRest _ (StateLeaf _) = []
+    genFirstStateRest (stdGen:nextStdGens) stateTree = thisToken:nextTokens where
         thisToken = (genTokenFromTree stdGen stateTree)
-        nextTokens = genFirstState' nextStdGens (walkStateTree stateTree [thisToken])
+        nextTokens = genFirstStateRest nextStdGens (walkStateTree stateTree [thisToken])
+    genFirstStateFull stdGens' stateTree = TextStart:nextTokens where
+        nextTokens = genFirstStateRest stdGens' (walkStateTree stateTree [TextStart])
 
 -- Given a chain, and a first state out of the chain, get tokens that
 -- come *after* that state
@@ -194,10 +195,11 @@ genTokenFromTree stdGen (StateLeaf nextTokenCounts) = weightedRandomKey stdGen n
         kvPairs = (DataMap.assocs map')
 
 renderTokens :: [Token] -> String
-renderTokens tokens = DataList.intercalate " " $ map renderToken tokens
+renderTokens tokens = concat $ map renderToken tokens
 
 renderToken :: Token -> String
-renderToken (Word str) = str
+renderToken (Word str) = str ++ " "
+renderToken TextStart = ""
 
 ------------------------
 -- Main
