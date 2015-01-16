@@ -2,7 +2,6 @@ import qualified System.Directory as Directory
 import qualified System.FilePath.Posix as Posix
 import qualified Data.Map as DataMap
 import qualified Data.List as DataList
-import qualified Data.String.Utils as StringUtils
 import qualified Data.Maybe as Maybe
 import qualified System.Random as Random
 -- import qualified Text.Groom as Groom
@@ -27,10 +26,10 @@ getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
     where
         getTrainingTokens :: String -> [Token]
         getTrainingTokens trainingString' = map (Token . cleanToken)
-            $ StringUtils.splitWs
+            $ words
             $ trainingString'
         cleanToken :: String -> String
-        cleanToken = id -- later we can remove commas, remove caps
+        cleanToken = id
 
 getTrainingFilenames :: IO [String]
 getTrainingFilenames = do
