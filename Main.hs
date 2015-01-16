@@ -29,7 +29,8 @@ getTrainingText trainingString = TrainingText $ TextStart:(getTrainingTokens tra
             $ trainingString'
 
 isSufficientTrainingText :: Int -> TrainingText -> Bool
-isSufficientTrainingText stateLength (TrainingText tokens) = length tokens >= stateLength
+-- + 1 for the TextStart token
+isSufficientTrainingText stateLength (TrainingText tokens) = length tokens >= stateLength + 1
 
 getTrainingFilenames :: IO [String]
 getTrainingFilenames = do
