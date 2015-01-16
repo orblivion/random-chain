@@ -25,6 +25,7 @@ executable random-chain
     filepath,
     containers,
     text,
+    random,
     groom
   -- hs-source-dirs:      
   default-language:    Haskell2010

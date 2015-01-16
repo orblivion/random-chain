@@ -2,15 +2,17 @@ import qualified System.Directory as Directory
 import qualified System.FilePath.Posix as Posix
 import qualified Data.Map as DataMap
 import qualified Data.Text as DataText
+import qualified Data.List as DataList
 import qualified Data.Maybe as Maybe
 import qualified Text.Groom as Groom
+import qualified System.Random as Random
 -- import qualified Debug.Trace as Trace
 
-data State = State [Token] deriving Show
+data State = State {getTokens :: [Token]} deriving Show
 
 type StateTreeNode = DataMap.Map Token StateTree
 type NextTokenCounts = DataMap.Map Token Int
-data StateTree = StateLeaf NextTokenCounts | StateBranch StateTreeNode deriving Show
+data StateTree = StateLeaf NextTokenCounts | StateBranch StateTreeNode deriving (Show, Eq)
 data Chain = Chain StateTree deriving Show
 
 ------------------------
@@ -114,14 +116,96 @@ addTrainingTextToChain stateLength chain trainingText =
                 state = (getState tText stateLength)
 
 ------------------------
--- Main
+-- Generating Random Stuff
 ------------------------
 
+genText :: Chain -> Random.StdGen -> String
+genText chain stdGen = renderTokens $ firstTokens ++ nextTokens where
+    (firstStateStdGen, nextTokensStdGen) = Random.split stdGen
+
+    -- first state
+    firstState = genFirstState chain firstStateStdGen
+    State firstTokens = firstState
+
+    -- subsequent states
+    nextTokens = genNextTokens chain nextTokensStdGen firstState
+
+-- Our first so many tokens can't be due to a transition from an old State,
+-- since a State requires a full roster of tokens
+
+isEndState :: StateTree -> State -> Bool
+isEndState bStateTree (State tokens) = walkStateTree bStateTree tokens == emptyStateLeaf
+
+genFirstState :: Chain -> Random.StdGen -> State
+genFirstState (Chain baseSTree) initStdGen = State $ genFirstState' stdGens baseSTree where
+    stdGens = genStdGens initStdGen
+
+    genFirstState' :: [Random.StdGen] -> StateTree -> [Token]
+    genFirstState' _ (StateLeaf _) = []
+    genFirstState' (stdGen:nextStdGens) stateTree = thisToken:nextTokens where
+        thisToken = (genTokenFromTree stdGen stateTree)
+        nextTokens = genFirstState' nextStdGens (walkStateTree stateTree [thisToken])
+
+genNextTokens :: Chain -> Random.StdGen -> State ->  [Token]
+genNextTokens (Chain baseSTree) initStdGen firstState = nextTokens where
+    stdGens = genStdGens initStdGen
+    State firstTokens = firstState
+
+    genNextStates :: [Random.StdGen] -> State -> [State]
+    genNextStates (stdGen:nextStdGens) thisState 
+        | isEndState baseSTree nextState = nextState:genNextStates nextStdGens nextState
+        | otherwise = [nextState]
+            where
+                nextState = State $ nextStateStartTokens ++ [nextStateLastToken]
+                nextStateStartTokens = tail $ getTokens thisState
+                lastStateBranch = walkStateTree baseSTree nextStateStartTokens
+                nextStateLastToken = (genTokenFromTree stdGen lastStateBranch)
+
+    nextTokens :: [Token]
+    nextTokens = leadTokens ++ lastTokens where
+        states = genNextStates stdGens firstState
+        leadTokens = map (head . getTokens) states -- the first tokens of all states
+        lastTokens = tail $ getTokens $ last states -- the remainingg tokens of the last state
+
+-- Get an endless list of random sources based on a random source
+genStdGens :: Random.StdGen -> [Random.StdGen]
+genStdGens stdGen = stdGen1:stdGen2:(genStdGens stdGen1) where
+    (stdGen1, stdGen2) = Random.split stdGen
+
+walkStateTree :: StateTree -> [Token] -> StateTree
+walkStateTree stateTree [] = stateTree
+walkStateTree (StateBranch stateTreeNode) (headToken:tailTokens) =
+    walkStateTree (Maybe.fromJust (DataMap.lookup headToken stateTreeNode)) tailTokens
+
+randomPick :: Random.StdGen -> [k] -> k
+randomPick stdGen lst = lst !! (fst $ Random.randomR (0, (length lst) - 1) stdGen)
+
+genTokenFromTree :: Random.StdGen -> StateTree -> Token
+genTokenFromTree stdGen (StateBranch stateTreeNode) = randomKey stdGen stateTreeNode where
+    randomKey :: Random.StdGen -> DataMap.Map k v -> k
+    randomKey stdGen map' = randomPick stdGen $ DataMap.keys map'
+
+genTokenFromTree stdGen (StateLeaf nextTokenCounts) = weightedRandomKey stdGen nextTokenCounts where
+    weightedRandomKey :: Random.StdGen -> DataMap.Map k Int -> k
+    weightedRandomKey stdGen map' = randomPick stdGen $ concatMap replicateTuple kvPairs where
+        replicateTuple = (uncurry (flip replicate))
+        kvPairs = (DataMap.assocs map')
+
+renderTokens :: [Token] -> String
+renderTokens tokens = DataList.intercalate " " $ map renderToken tokens
+
+renderToken (Token str) = str
+
+------------------------
+-- Main
+------------------------
 
 main :: IO ()
 main = do
     trainingStrings <- getTrainingStrings
+    let chainLength = 5
     let trainingTexts = map getTrainingText trainingStrings
-    let chain = foldl (addTrainingTextToChain 5) emptyChain trainingTexts
-    putStrLn $ Groom.groom chain
+    let chain = foldl (addTrainingTextToChain chainLength) emptyChain trainingTexts
+    -- putStrLn $ Groom.groom chain
+    putStrLn $ take 10000 $ genText chain (Random.mkStdGen 3)
     return ()
