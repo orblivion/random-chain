@@ -11,7 +11,7 @@ data State = State {getTokens :: [Token]} deriving Show
 type StateTreeNode = DataMap.Map Token StateTree
 type NextTokenCounts = DataMap.Map Token Int
 data StateTree = StateLeaf NextTokenCounts | StateBranch StateTreeNode deriving (Show, Eq)
-data Chain = Chain StateTree deriving Show
+data Chain = Chain {getStateTree :: StateTree} deriving Show
 
 ------------------------
 -- Getting Training Text
@@ -219,7 +219,10 @@ main = do
     let chainLength = 3
     let trainingTexts = map getTrainingText trainingStrings
     let chain = foldl (addTrainingTextToChain chainLength) emptyChain trainingTexts
-    -- putStrLn $ Groom.groom chain
-    stdGen <- Random.getStdGen
-    putStrLn $ take 10000 $ genText chain stdGen
-    return ()
+    if getStateTree chain == emptyStateLeaf
+        then putStrLn "Insufficient training texts found"
+        else do
+            -- putStrLn $ Groom.groom chain
+            stdGen <- Random.getStdGen
+            putStrLn $ take 10000 $ genText chain stdGen
+            return ()
