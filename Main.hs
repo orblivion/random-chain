@@ -1,8 +1,8 @@
 import qualified System.Directory as Directory
 import qualified System.FilePath.Posix as Posix
 import qualified Data.Map as DataMap
-import qualified Data.Text as DataText
 import qualified Data.List as DataList
+import qualified Data.String.Utils as StringUtils
 import qualified Data.Maybe as Maybe
 import qualified System.Random as Random
 -- import qualified Text.Groom as Groom
@@ -26,9 +26,9 @@ getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
     where
         getTrainingTokens :: String -> [Token]
-        getTrainingTokens trainingString' = map (Token . cleanToken . DataText.unpack)
-            $ DataText.splitOn (DataText.pack " ")
-            $ DataText.pack trainingString'
+        getTrainingTokens trainingString' = map (Token . cleanToken)
+            $ StringUtils.splitWs
+            $ trainingString'
         cleanToken :: String -> String
         cleanToken = id -- later we can remove commas, remove caps
 
