@@ -18,18 +18,16 @@ data Chain = Chain StateTree deriving Show
 -- Getting Training Text
 ------------------------
 
-data Token = Token String deriving (Show, Eq, Ord)
+data Token = Word String deriving (Show, Eq, Ord)
 data TrainingText = TrainingText [Token] deriving Show
 
 getTrainingText :: String -> TrainingText
 getTrainingText trainingString = TrainingText $ getTrainingTokens trainingString
     where
         getTrainingTokens :: String -> [Token]
-        getTrainingTokens trainingString' = map (Token . cleanToken)
+        getTrainingTokens trainingString' = map Word
             $ words
             $ trainingString'
-        cleanToken :: String -> String
-        cleanToken = id
 
 getTrainingFilenames :: IO [String]
 getTrainingFilenames = do
@@ -199,7 +197,7 @@ renderTokens :: [Token] -> String
 renderTokens tokens = DataList.intercalate " " $ map renderToken tokens
 
 renderToken :: Token -> String
-renderToken (Token str) = str
+renderToken (Word str) = str
 
 ------------------------
 -- Main
