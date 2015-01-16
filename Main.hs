@@ -28,6 +28,9 @@ getTrainingText trainingString = TrainingText $ TextStart:(getTrainingTokens tra
             $ words
             $ trainingString'
 
+isSufficientTrainingText :: Int -> TrainingText -> Bool
+isSufficientTrainingText stateLength (TrainingText tokens) = length tokens >= stateLength
+
 getTrainingFilenames :: IO [String]
 getTrainingFilenames = do
   fnames <- Directory.getDirectoryContents "training"
@@ -216,9 +219,9 @@ renderToken TextStart = ""
 main :: IO ()
 main = do
     trainingStrings <- getTrainingStrings
-    let chainLength = 3
-    let trainingTexts = map getTrainingText trainingStrings
-    let chain = foldl (addTrainingTextToChain chainLength) emptyChain trainingTexts
+    let stateLength = 3
+    let trainingTexts = filter (isSufficientTrainingText stateLength) $ map getTrainingText trainingStrings
+    let chain = foldl (addTrainingTextToChain stateLength) emptyChain trainingTexts
     if getStateTree chain == emptyStateBranch
         then putStrLn "Insufficient training texts found"
         else do
