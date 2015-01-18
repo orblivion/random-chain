@@ -1,6 +1,6 @@
 # Wut
 
-This generates 10000 characters of random text.
+This generates 10000 characters of random text, based on training strings.
 
 # Installation
 
