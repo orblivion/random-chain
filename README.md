@@ -1,3 +1,7 @@
+# Wut
+
+This generates 10000 characters of random text.
+
 # Installation
 
 Recommended that you use cabal sandbox, so that nothing you install here gets into your general cabal directory:
